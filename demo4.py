@@ -9,9 +9,13 @@ from obstacleAvoid import avoidObs
 from LineFollower import LineFollower
 
 
+### Open a file for data output ###
+f = open("demo4_t_pm_lerr_ms_lm_rm.csv",'w')
+
 ### Set CONST variables ###
 MAX_SPEED = 140
 FRAME_RATE = 30
+TIMECOUNT = 0
 
 
 ### Obstacle PID Constants ###
@@ -130,6 +134,11 @@ while True:
     old_err = old_err + (obs_sp - percent_makeup)
     old_line_err = old_line_err + (line_sp - cx)
 
+    ### Write data to file ###
+    f.write(str(TIMECOUNT)+","str((obs_sp - percent_makeup))+","+str((line_sp-cx))+","+str(obs_motor_speed)+","+str(obs_motor_speed-line_motor_diff)+","+str(obs_motor_speed+line_motor_diff)+"\n")
+
+    ### Update TIMECOUNT ###
+    TIMECOUNT += dt
 
     ### Sleep for one frame ###
     time.sleep(dt)

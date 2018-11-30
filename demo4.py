@@ -10,7 +10,7 @@ from LineFollower import LineFollower
 
 
 ### Open a file for data output ###
-f = open("demo4_t_pm_lerr_ms_lm_rm.csv",'w')
+f = open("demo4_t_pm_lerr_ms_lm_rm_run3.csv",'w')
 
 ### Set CONST variables ###
 MAX_SPEED = 140
@@ -37,10 +37,10 @@ mh = Raspi_MotorHAT(addr=0x6f)
 
 ### Create a function to turn off motors on program exit ###
 def turnOffMotors():
-    mh.getMotor(1).run(Raspi_MotorHAT.RELEASE)
-    mh.getMotor(2).run(Raspi_MotorHAT.RELEASE)
-    mh.getMotor(3).run(Raspi_MotorHAT.RELEASE)
-    mh.getMotor(4).run(Raspi_MotorHAT.RELEASE)
+	mh.getMotor(1).run(Raspi_MotorHAT.RELEASE)
+	mh.getMotor(2).run(Raspi_MotorHAT.RELEASE)
+	mh.getMotor(3).run(Raspi_MotorHAT.RELEASE)
+	mh.getMotor(4).run(Raspi_MotorHAT.RELEASE)
 
 
 ### Register turnOffMotors to run at exit ###
@@ -64,81 +64,83 @@ w = 0
 
 ### Setup Webcam as video input ###
 cap = cv2.VideoCapture(0)
-cap.set(3,320.0)                    # Resize the image x-direction
-cap.set(4,240.0)                    # Resize the image y-direction
-cap.set(5,FRAME_RATE)               # Set the webcam frame rate
+cap.set(3,320.0)					# Resize the image x-direction
+cap.set(4,240.0)					# Resize the image y-direction
+cap.set(5,FRAME_RATE)			   # Set the webcam frame rate
 
 
 ### Grab two frames to throw away ###
 for i in range(0,2):
-    flag, trash = cap.read()
+	flag, trash = cap.read()
 
 ### Main Loop, Will be broken into functions ###
 while True:
 
-    ### Zero the x-centroid and percent_makeup variables every loop ###
-    cx = 0
-    percent_makeup = 0
+	### Zero the x-centroid and percent_makeup variables every loop ###
+	cx = 0
+	percent_makeup = 0
 
-    ### Set the motor directions ###
-    leftMotor.run(Raspi_MotorHAT.FORWARD)
-    rightMotor.run(Raspi_MotorHAT.FORWARD)
+	### Set the motor directions ###
+	leftMotor.run(Raspi_MotorHAT.FORWARD)
+	rightMotor.run(Raspi_MotorHAT.FORWARD)
 
-    ### Read one frame from the webcam ###
-    flag, frame = cap.read()
+	### Read one frame from the webcam ###
+	flag, frame = cap.read()
 
-    ### Resize the frame to remove borders ###
-    frame = frame[60:180, 0:320]
+	### Resize the frame to remove borders ###
+	frame = frame[60:180, 0:320]
 
-    ### Find the size of the x- and y-direction ###
-    xsize = int(frame.shape[1]/2)
-    ysize = int(frame.shape[0]/4)
+	### Find the size of the x- and y-direction ###
+	xsize = int(frame.shape[1]/2)
+	ysize = int(frame.shape[0]/4)
 
-    ### Find the BGR value of sample pixel ###
-    px = np.array(frame[int(ysize), int(xsize)])
+	### Find the BGR value of sample pixel ###
+	px = np.array(frame[int(ysize), int(xsize)])
 
-    ### Enter the avoidObs function ###
-    percent_makeup = avoidObs(frame, px, w, h)
+	### Enter the avoidObs function ###
+	percent_makeup = avoidObs(frame, px, w, h)
 
-    ### Enter the LineFollower function ###
-    cx = LineFollower(frame)
+	### Enter the LineFollower function ###
+	cx = LineFollower(frame)
 
-    ### Calculate the PID value for motor speed ###
-    obs_motor_speed = int(calcOBSPID(obs_sp, percent_makeup, old_err, ObsPIDgains, dt))
+	### Calculate the PID value for motor speed ###
+	obs_motor_speed = int(calcOBSPID(obs_sp, percent_makeup, old_err, ObsPIDgains, dt))
 
-    ### Print values to the terminal ###
-    print("cx: "+str(cx)+"% makeup: "+str(percent_makeup)+" PID Motor Speed: "+str(obs_motor_speed))
+	### Print values to the terminal ###
+	print("cx: "+str(cx)+"% makeup: "+str(percent_makeup)+" PID Motor Speed: "+str(obs_motor_speed))
 
-    ### Cap the motor speed ###
-    if obs_motor_speed > MAX_SPEED:
-        obs_motor_speed = MAX_SPEED
+	### Cap the motor speed ###
+	if obs_motor_speed > MAX_SPEED:
+		obs_motor_speed = MAX_SPEED
 
-    if not np.isinf(cx) and not np.isnan(cx) and cx < 50:
+	line_motor_diff = 0
 
-        ### Calculate the PID value for motor speed differential ###
-        line_motor_diff = int(calcLinePID(line_sp, cx, old_line_err, LinePIDgains, dt))
+	if not np.isinf(cx) and not np.isnan(cx):
 
-        ### Print values to the terminal ###
-        print("cx:"+str(cx)+" PID:"+str(line_motor_diff)+"\n")
+		### Calculate the PID value for motor speed differential ###
+		line_motor_diff = int(calcLinePID(line_sp, cx, old_line_err, LinePIDgains, dt))
 
-        ### Set the left and right motor speed ###
-        leftMotor.setSpeed(obs_motor_speed-line_motor_diff)
-        rightMotor.setSpeed(obs_motor_speed+line_motor_diff)
+		### Print values to the terminal ###
+		print("cx:"+str(cx)+" PID:"+str(line_motor_diff)+"\n")
 
-    else:
-        ### Set the left and right motor speed ###
-        leftMotor.setSpeed(0)
-        rightMotor.setSpeed(0)
+		### Set the left and right motor speed ###
+		leftMotor.setSpeed(obs_motor_speed-line_motor_diff)
+		rightMotor.setSpeed(obs_motor_speed+line_motor_diff)
 
-    ### Calculate the running error ###
-    old_err = old_err + (obs_sp - percent_makeup)
-    old_line_err = old_line_err + (line_sp - cx)
+	else:
+		### Set the left and right motor speed ###
+		leftMotor.setSpeed(0)
+		rightMotor.setSpeed(0)
 
-    ### Write data to file ###
-    f.write(str(TIMECOUNT)+","str((obs_sp - percent_makeup))+","+str((line_sp-cx))+","+str(obs_motor_speed)+","+str(obs_motor_speed-line_motor_diff)+","+str(obs_motor_speed+line_motor_diff)+"\n")
+	### Calculate the running error ###
+	old_err = old_err + (obs_sp - percent_makeup)
+	old_line_err = old_line_err + (line_sp - cx)
 
-    ### Update TIMECOUNT ###
-    TIMECOUNT += dt
+	### Write data to file ###
+	f.write(str(TIMECOUNT)+","+str(obs_sp - percent_makeup)+","+str(line_sp-cx)+","+str(obs_motor_speed)+","+str(obs_motor_speed-line_motor_diff)+","+str(obs_motor_speed+line_motor_diff)+"\n")
 
-    ### Sleep for one frame ###
-    time.sleep(dt)
+	### Update TIMECOUNT ###
+	TIMECOUNT = TIMECOUNT + dt
+
+	### Sleep for one frame ###
+	time.sleep(dt)

@@ -10,25 +10,25 @@ from LineFollower import LineFollower
 
 
 ### Open a file for data output ###
-f = open("demo4_t_pm_lerr_ms_lm_rm_run3.csv",'w')
+f = open("demo4_t_pm_lerr_ms_lm_rm_run8.csv",'w')
 
 ### Set CONST variables ###
-MAX_SPEED = 140
+MAX_SPEED = 120
 FRAME_RATE = 30
 TIMECOUNT = 0
 
 
 ### Obstacle PID Constants ###
-obs_sp = 20
+obs_sp = 30
 dt = 1/FRAME_RATE
 old_err = 0
-ObsPIDgains = [6,0.0004,.0000002]
+ObsPIDgains = [8.35,0.15,.0000008]
 
 
 ### Line Follow PID Constants ###
 line_sp = 160
 old_line_err = 0
-LinePIDgains = [.75,0,.000000025]
+LinePIDgains = [.85,0,.000000025]
 
 
 ### MotorHAT Initialization ###
@@ -113,8 +113,20 @@ while True:
 	if obs_motor_speed > MAX_SPEED:
 		obs_motor_speed = MAX_SPEED
 
+	### Turn the motors backwards if less than zero ###
+	if obs_motor_speed < 0:
+		leftMotor.run(Raspi_MotorHAT.BACKWARD)
+		rightMotor.run(Raspi_MotorHAT.BACKWARD)
+		obs_motor_speed = abs(obs_motor_speed)
+	else:
+		leftMotor.run(Raspi_MotorHAT.FORWARD)
+		rightMotor.run(Raspi_MotorHAT.FORWARD)
+ 
+
+	### Initialize the differential between motors ###
 	line_motor_diff = 0
 
+	### If the centroid is not NaN or Inf ###
 	if not np.isinf(cx) and not np.isnan(cx):
 
 		### Calculate the PID value for motor speed differential ###
